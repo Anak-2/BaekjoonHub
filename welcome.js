@@ -6,6 +6,31 @@ const repositoryName = () => {
   return $('#name').val().trim();
 };
 
+/* Fetch Branches of Repo  */
+
+const fetchBranches = (token, owner, repo) => {
+  const BRANCHES_URL = `https://api.github.com/repos/${owner}/${repo}/branches`;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener('readystatechange', function () {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          const branches = JSON.parse(xhr.responseText);
+          resolve(branches);
+        } else {
+          reject(new Error(`Failed to fetch branches for ${repo}`));
+        }
+      }
+    });
+
+    xhr.open('GET', BRANCHES_URL, true);
+    xhr.setRequestHeader('Authorization', `token ${token}`);
+    xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+    xhr.send();
+  });
+};
+
 /* Status codes for creating of repo */
 
 const statusCode = (res, status, name) => {
@@ -41,21 +66,33 @@ const statusCode = (res, status, name) => {
       break;
 
     default:
-      /* Change mode type to commit */
-      chrome.storage.local.set({ mode_type: 'commit' }, () => {
-        $('#error').hide();
-        $('#success').html(`Successfully created <a target="blank" href="${res.html_url}">${name}</a>. Start <a href="https://www.acmicpc.net/">BOJ</a>!`);
-        $('#success').show();
-        $('#unlink').show();
-        /* Show new layout */
-        document.getElementById('hook_mode').style.display = 'none';
-        document.getElementById('commit_mode').style.display = 'inherit';
-      });
-      /* Set Repo Hook */
-      chrome.storage.local.set({ BaekjoonHub_hook: res.full_name }, () => {
-        console.log('Successfully set new repo hook');
-      });
+      const [owner, repo] = name.split('/');
+      fetchBranches(token, owner, repo).then(branches => {
+        chrome.storage.local.set({ mode_type: 'commit' }, () => {
+          $('#error').hide();
+          $('#success').html(`
+        Successfully created <a target="blank" href="${res.html_url}">${name}</a>. Start <a href="https://www.acmicpc.net/">BOJ</a>!
+        <br>Select a branch to start working:
+        <select id="branch-select">
+          ${branches.map(branch => `<option value="${branch.name}">${branch.name}</option>`).join('')}
+        </select>
+      `);
+          $('#success').show();
+          $('#unlink').show();
+          /* Show new layout */
+          document.getElementById('hook_mode').style.display = 'none';
+          document.getElementById('commit_mode').style.display = 'inherit';
+        });
 
+        /* Set Repo Hook */
+        chrome.storage.local.set({ BaekjoonHub_hook: res.full_name }, () => {
+          console.log('Successfully set new repo hook');
+        });
+
+      }).catch(error => {
+        console.error(error);
+        $('#error').text(`Failed to load branches: ${error.message}`).show();
+      });
       break;
   }
 };
@@ -71,7 +108,7 @@ const createRepo = (token, name) => {
   data = JSON.stringify(data);
 
   const xhr = new XMLHttpRequest();
-  xhr.addEventListener('readystatechange', function() {
+  xhr.addEventListener('readystatechange', function () {
     if (xhr.readyState === 4) {
       statusCode(JSON.parse(xhr.responseText), xhr.status, name);
     }
@@ -90,7 +127,7 @@ const createRepo = (token, name) => {
 
 /* Status codes for linking of repo */
 const linkStatusCode = (status, name) => {
-  let bool = false;
+  let isLinked = false;
   switch (status) {
     case 301:
       $('#success').hide();
@@ -111,11 +148,11 @@ const linkStatusCode = (status, name) => {
       break;
 
     default:
-      bool = true;
+      isLinked = true;
       break;
   }
   $('#unlink').show();
-  return bool;
+  return isLinked;
 };
 
 /* 
@@ -128,13 +165,13 @@ const linkRepo = (token, name) => {
   const AUTHENTICATION_URL = `https://api.github.com/repos/${name}`;
 
   const xhr = new XMLHttpRequest();
-  xhr.addEventListener('readystatechange', function() {
+  xhr.addEventListener('readystatechange', function () {
     if (xhr.readyState === 4) {
       const res = JSON.parse(xhr.responseText);
-      const bool = linkStatusCode(xhr.status, name);
+      const isLinked = linkStatusCode(xhr.status, name);
       if (xhr.status === 200) {
         // BUG FIX
-        if (!bool) {
+        if (!isLinked) {
           // unable to gain access to repo in commit mode. Must switch to hook mode.
           /* Set mode type to hook */
           chrome.storage.local.set({ mode_type: 'hook' }, () => {
@@ -149,31 +186,36 @@ const linkRepo = (token, name) => {
           document.getElementById('hook_mode').style.display = 'inherit';
           document.getElementById('commit_mode').style.display = 'none';
         } else {
-          /* Change mode type to commit */
-          /* Save repo url to chrome storage */
-          chrome.storage.local.set({ mode_type: 'commit', repo: res.html_url }, () => {
-            $('#error').hide();
-            $('#success').html(`Successfully linked <a target="blank" href="${res.html_url}">${name}</a> to BaekjoonHub. Start <a href="https://www.acmicpc.net/">BOJ</a> now!`);
-            $('#success').show();
-            $('#unlink').show();
-          });
-          /* Set Repo Hook */
+          // Fetch branches after successful linking
+          const [owner, repo] = name.split('/');
+          fetchBranches(token, owner, repo)
+            .then(branches => {
+              chrome.storage.local.set({ mode_type: 'commit', repo: res.html_url }, () => {
+                $('#error').hide();
+                $('#success').html(`
+                  Successfully linked <a target="blank" href="${res.html_url}">${name}</a> to BaekjoonHub. Start <a href="https://www.acmicpc.net/">BOJ</a> now!
+                  <br>Select a branch to start working:
+                  <select id="branch-select">
+                    ${branches.map(branch => `<option value="${branch.name}">${branch.name}</option>`).join('')}
+                  </select>
+                `);
+                $('#success').show();
+                $('#unlink').show();
 
-          stats = {};
-          stats.version = chrome.runtime.getManifest().version;
-          stats.submission = {};
-          chrome.storage.local.set({ stats });
+                document.getElementById('hook_mode').style.display = 'none';
+                document.getElementById('commit_mode').style.display = 'inherit';
+              });
 
-          chrome.storage.local.set({ BaekjoonHub_hook: res.full_name }, () => {
-            console.log('Successfully set new repo hook');
-            /* Get problems solved count */
-            chrome.storage.local.get('stats', (psolved) => {
-              const { stats } = psolved;
+              stats = { version: chrome.runtime.getManifest().version, submission: {} };
+              chrome.storage.local.set({ stats });
+              chrome.storage.local.set({ BaekjoonHub_hook: res.full_name }, () => {
+                console.log('Successfully set new repo hook');
+              });
+            })
+            .catch(error => {
+              console.error('Failed to load branches:', error);
+              $('#error').text(`Failed to load branches: ${error.message}`).show();
             });
-          });
-          /* Hide accordingly */
-          document.getElementById('hook_mode').style.display = 'none';
-          document.getElementById('commit_mode').style.display = 'inherit';
         }
       }
     }
@@ -207,7 +249,7 @@ const unlinkRepo = () => {
 
 /* Check for value of select tag, Get Started disabled by default */
 
-$('#type').on('change', function() {
+$('#type').on('change', function () {
   const valueSelected = this.value;
   if (valueSelected) {
     $('#hook_button').attr('disabled', false);

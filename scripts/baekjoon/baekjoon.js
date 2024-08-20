@@ -1,5 +1,5 @@
 // Set to true to enable console log
-const debug = false;
+const debug = true;
 
 /* 
   문제 제출 맞음 여부를 확인하는 함수
@@ -48,7 +48,7 @@ function stopLoader() {
   loader = null;
 }
 
-function toastThenStopLoader(toastMessage, errorMessage){
+function toastThenStopLoader(toastMessage, errorMessage) {
   Toast.raiseToast(toastMessage)
   stopLoader()
   throw new Error(errorMessage)

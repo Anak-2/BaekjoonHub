@@ -53,6 +53,7 @@ class GitHub {
  * @param {string} token - the github token
  * @return {Promise} - the promise for the branch sha
  */
+// TODO: 만약 설정한 branch가 있다면 default가 아닌 branch로 전달
 async function getDefaultBranchOnRepo(hook, token) {
   return fetch(`https://api.github.com/repos/${hook}`, {
     method: 'GET',
