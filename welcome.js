@@ -6,7 +6,7 @@ const repositoryName = () => {
   return $('#name').val().trim();
 };
 
-/* Fetch Branches of Repo  */
+/* Fetch Branches of Repo */
 
 const fetchBranches = (token, owner, repo) => {
   const BRANCHES_URL = `https://api.github.com/repos/${owner}/${repo}/branches`;
@@ -206,7 +206,9 @@ const linkRepo = (token, name) => {
                 document.getElementById('commit_mode').style.display = 'inherit';
               });
 
-              stats = { version: chrome.runtime.getManifest().version, submission: {} };
+              stats = {};
+              stats.version = chrome.runtime.getManifest().version;
+              stats.submission = {};
               chrome.storage.local.set({ stats });
               chrome.storage.local.set({ BaekjoonHub_hook: res.full_name }, () => {
                 console.log('Successfully set new repo hook');

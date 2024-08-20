@@ -301,5 +301,17 @@ if (typeof __DEV__ !== "undefined") {
 
 
 function log(...args) {
-  if (debug) console.log(...args)
+  if (debug) {
+    console.log(...args);
+
+    // Error 객체를 생성하여 스택 정보를 추출
+    const stack = new Error().stack;
+    const stackLines = stack.split('\n');
+
+    // 스택의 두 번째 줄이 부모 호출자에 대한 정보입니다.
+    // 첫 번째 줄은 현재 log 함수에 대한 정보이고, 두 번째 줄은 부모 함수에 대한 정보입니다.
+    if (stackLines[2]) {
+      console.log('Called by:', stackLines[2].trim());
+    }
+  }
 }

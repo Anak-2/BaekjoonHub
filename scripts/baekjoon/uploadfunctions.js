@@ -29,6 +29,7 @@ async function uploadOneSolveProblemOnGit(bojData, cb) {
  * @param {string} commitMessage - 커밋 메시지
  * @param {function} cb - 콜백 함수 (ex. 업로드 후 로딩 아이콘 처리 등)
  */
+// TODO: stats.branches[hook] 을 레포지토리의 브랜치들 가져올 때 업데이트하기
 async function upload(token, hook, sourceText, readmeText, directory, filename, commitMessage, cb) {
   /* 업로드 후 커밋 */
   const git = new GitHub(hook, token);

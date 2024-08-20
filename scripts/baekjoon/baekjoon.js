@@ -61,6 +61,8 @@ async function beginUpload(bojData) {
   if (isNotEmpty(bojData)) {
     const stats = await getStats();
     const hook = await getHook();
+    console.log("stats debug: " + JSON.stringify(stats, null, 2));
+    log("hook debug: " + hook);
 
     const currentVersion = stats.version;
     /* 버전 차이가 발생하거나, 해당 hook에 대한 데이터가 없는 경우 localstorage의 Stats 값을 업데이트하고, version을 최신으로 변경한다 */
@@ -74,6 +76,7 @@ async function beginUpload(bojData) {
     log('cachedSHA', cachedSHA, 'calcSHA', calcSHA)
 
     if (cachedSHA == calcSHA) {
+      // TODO: stats.branches 가 undefined이기 때문에 링크가 제대로 연결이 안되는 문제 발생
       markUploadedCSS(stats.branches, bojData.directory);
       console.log(`현재 제출번호를 업로드한 기록이 있습니다.` /* submissionID ${bojData.submissionId}` */);
       return;
